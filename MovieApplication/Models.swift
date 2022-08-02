@@ -7,8 +7,10 @@
 
 import Foundation
 
+//Structs From API
+
 struct Movie: Codable {
-    let search: [Search]?
+    var search: [Search]?
     let totalResults: String?
     let response: String?
     let error: String?
@@ -39,10 +41,13 @@ enum TypeEnum: String, Codable {
     case movie = "movie"
 }
 
+//Segment For Scope Button Titles
+
 enum SegmentType: Int {
     case all = 0
     case movies = 1
     case series = 2
+    case games = 3
     
     var title: String {
         switch self {
@@ -52,6 +57,8 @@ enum SegmentType: Int {
             return "Movies"
         case .series:
             return "Series"
+        case .games:
+            return "Games"
         }
     }
 }

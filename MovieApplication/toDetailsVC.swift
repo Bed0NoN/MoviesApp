@@ -11,6 +11,8 @@ class toDetailsVC: UIViewController {
     
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     
+    //Null Variables
+    
     var selectedTypeLabel = ""
     var selectedImdbLabel = ""
     var selectedYearLabel = ""
@@ -20,8 +22,6 @@ class toDetailsVC: UIViewController {
     var selectedResponse = ""
     var selectedImage = ""
     
-    
-    //var getMovies = [Search]()
     
     
     @IBOutlet weak var resultsLabel: UILabel!
@@ -39,14 +39,22 @@ class toDetailsVC: UIViewController {
         
         setSpinner()
         
-        removeSpinner()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)){[self] in
+            typeLabel.text = "Type : \(selectedTypeLabel)".capitalized
+            imdbLabel.text = "Imdb ID : \(selectedImdbLabel)"
+            yearLabel.text = "Year : \(selectedYearLabel)"
+            titleLabel.text = "Movie Name : \(selectedTitleLabel)"
+            resultsLabel.text = "Total Results : \(selectedResults)"
+            responseLabel.text = "Response : \(selectedResponse)"
+            
+            //Converting String to ImageView with KingFisher Library
+            imageView.kf.setImage(with: URL(string: selectedImage))
+            
+        }
+        if imageView.image != nil {
+            removeSpinner()
+        }
         
-        typeLabel.text = "Type : \(selectedTypeLabel)".capitalized
-        imdbLabel.text = "Imdb ID : \(selectedImdbLabel)"
-        yearLabel.text = "Year : \(selectedYearLabel)"
-        titleLabel.text = "Movie Name : \(selectedTitleLabel)"
-        resultsLabel.text = "Total Results : \(selectedResults)"
-        responseLabel.text = "Response : \(selectedResponse)"
         
         titleLabel.textColor = .white
         imdbLabel.textColor = .white
@@ -55,13 +63,9 @@ class toDetailsVC: UIViewController {
         resultsLabel.textColor = .white
         responseLabel.textColor = .white
         
-        imageView.kf.setImage(with: URL(string: selectedImage))
-        
-        
-        //navigationController?.navigationItem.titleView?.backgroundColor = .white
-        
-        
     }
+    
+    //Set Spinner and Loading Label
     
     func setSpinner(){
         activityIndicator.startAnimating()
@@ -71,7 +75,8 @@ class toDetailsVC: UIViewController {
         loading.text = "Loading"
     }
     
-
+    //Remove Spinner and Loading Label
+    
     func removeSpinner(){
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)){
             self.activityIndicator.stopAnimating()
@@ -79,7 +84,8 @@ class toDetailsVC: UIViewController {
             self.loading.isHidden = true
         }
     }
-
+    
+    //Clear Button Settings And Actions
     
     @IBAction func clearButton(_ sender: Any) {
         
@@ -90,7 +96,7 @@ class toDetailsVC: UIViewController {
         resultsLabel.text = ""
         responseLabel.text = ""
         
-        view.backgroundColor = .darkText
+        view.backgroundColor = .darkGray
         
         imageView.image = UIImage(named: "clickme")
         imageView.isUserInteractionEnabled = true
@@ -99,11 +105,12 @@ class toDetailsVC: UIViewController {
         imageView.addGestureRecognizer(gestureRecognizer)
     }
     
+    //Selector Func For ImageView
     
     @objc func goToFirstViewController(){
         self.navigationController?.popViewController(animated: true)
     }
-     
-
+    
+    
 }
-     
+

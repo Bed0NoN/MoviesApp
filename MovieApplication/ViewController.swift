@@ -2,36 +2,52 @@
 import UIKit
 
 class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource,UISearchBarDelegate {
-    var movies : [Search]?
+    
+    //Variables and Arrays
+    
+    var response : Movie?
     var filteredMovies : [Search]?
     let spinner = UIActivityIndicatorView()
     let loadingLabel = UILabel()
     let loadingView = UIView()
     
+    //Segment
+    
     var segmentType: SegmentType? {
         didSet {
             switch segmentType {
             case .all:
-                filteredMovies = movies
+                filteredMovies = response?.search
                 tableView.reloadData()
             case .movies:
-                guard let movies = movies else {
+                guard let movies = response?.search else {
                     return
                 }
-
-                filteredMovies = movies.filter {
-                    $0.type == "movie"
+                
+                filteredMovies = movies.filter { search in
+                    search.type == "movie"
                 }
                 
                 tableView.reloadData()
                 
             case .series:
-                guard let movies = movies else {
+                guard let movies = response?.search else {
                     return
                 }
-
+                
                 filteredMovies = movies.filter {
                     $0.type == "series"
+                }
+                
+                tableView.reloadData()
+                
+            case .games:
+                guard let movies = response?.search else {
+                    return
+                }
+                
+                filteredMovies = movies.filter{
+                    $0.type == "game"
                 }
                 
                 tableView.reloadData()
@@ -41,14 +57,22 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
             }
         }
     }
-    //let searchController = UISearchController()
-    //let getTrailer = ["4YvNVqf2at0","K9WNBO3szgQ","H0IgfAs3tWg","si5C-3F9Pw4","imbA6Nkb8e8","5IPyv4KgTAA","yNLaTtpovys",""]
     
-    
+    //Label and TableView
     @IBOutlet weak var userLabel: UILabel!
     @IBOutlet weak var tableView: UITableView!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        getTableView()
+        searchBar()
+        
+    }
+    
+    //TableView Settings
+    
+    func getTableView(){
         view.backgroundColor = .lightGray
         tableView.delegate = self
         tableView.dataSource = self
@@ -58,14 +82,12 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "toDetailsVC")
         title = "Movie Paradise"
         
-        
-        //To-Do : Kullanıcıya mesaj göster.
-        userLabel.text = "Search For Any Movies"
+        //UserLabel Text Settings
+        userLabel.text = "Search For Any Movies,Series,Games"
         userLabel.textColor = .white
-        
-        searchBar()
-        
     }
+    
+    //Search Bar Settings
     
     func searchBar(){
         let searchBar = UISearchBar(frame: CGRect(x: 0, y: 0, width: self.view.frame.width, height: 50))
@@ -74,98 +96,91 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
         searchBar.showsScopeBar = true
         searchBar.tintColor = UIColor.lightGray
         
+        //Search Bar Scope Button Titles
+        
         searchBar.scopeButtonTitles = [
             SegmentType.all.title,
             SegmentType.movies.title,
-            SegmentType.series.title
+            SegmentType.series.title,
+            SegmentType.games.title
         ]
         
-        //To-Do Movies Series ayrı ayrı TableView'da reload edilecek.
         self.tableView.tableHeaderView = searchBar
-                                    
+        
     }
+    
+    //Search Bar Scope Button Change
     
     func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
         segmentType = SegmentType.init(rawValue: selectedScope)
     }
     
-    
-    
+    //Search Bar Text Change
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText == ""{
             userLabel.isHidden = false
+            filteredMovies?.removeAll()
+            response?.search?.removeAll()
+            tableView.reloadData()
         }
-        else{
-            
-        }
-        self.tableView.reloadData()
     }
     
+    //Search Button Clicked
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        //let takeResponse = getError?.response
         loadingLabel.isHidden = false
         guard let searchText = searchBar.text else{
             return
         }
-        //Burayı sor.
-        if searchText == ""{
-            userLabel.text = "You searched nothing. Please try again!"
-            userLabel.textColor = .red
-        }
-        /*
-        else if takeResponse == "False"{
-            userLabel.text = "No Movies Found."
-        }
-         */
-        else{
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)){ [self] in
             getData(keyword: searchText.replacingOccurrences(of: " ", with: ""))
-            userLabel.isHidden = true
-            setLoadingScreen()
         }
+        
+        userLabel.isHidden = true
+        setLoadingScreen()
     }
     
+    //Getting Data From API(URL)
+    
     func getData(keyword: String){
-        //To-Do --> Show Activity Indicator
+        setLoadingScreen()
+        
         let urlString = "https://www.omdbapi.com/?s=\(keyword)&page=3&apikey=9893101c"
         guard let url = URL(string: urlString) else{
             return
         }
         
         URLSession.shared.dataTask(with: url) { data, response, error in
-            if let error = error{
-                self.showError(message: error.localizedDescription)
-                return
-            }
-            
-            guard let data = data else{
-                self.showError(message: "Error")
-                return
-            }
-            
-            guard let decode = try? JSONDecoder().decode(Movie.self, from: data) else {
-                self.showError(message: "Error")
-                return
-            }
-            
-            if let error = decode.error {
-                self.showError(message: error)
-                return
-            }
-            
-            self.movies = decode.search
-            self.filteredMovies = decode.search
-            
-            DispatchQueue.main.async { [self] in
-                tableView.reloadData()
-                removeLoadingScreen()
-                //To-Do --> Hide Activity Indicator - Label Gizlenecek.
+            DispatchQueue.main.async {
+                guard let data = data else{
+                    self.showError(message: "Error")
+                    return
+                }
+                
+                guard let decode = try? JSONDecoder().decode(Movie.self, from: data) else {
+                    self.showError(message: "Error")
+                    return
+                }
+                
+                if let error = decode.error {
+                    self.showError(message: error)
+                    return
+                }
+                
+                self.response = decode
+                self.filteredMovies = decode.search
+                
+                self.tableView.reloadData()
+                self.removeLoadingScreen()
             }
             
         }.resume()
         
     }
+    
+    //Error Function
     
     func showError(message : String?){
         DispatchQueue.main.async {
@@ -174,12 +189,13 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
             error.addAction(okButton)
             self.present(error, animated: true, completion: nil)
             
-            //To-Do Hide Activity Indicator
+            //Hide Activity Indicator
+            self.removeLoadingScreen()
         }
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let movie = movies?[indexPath.row]
+        let movie = filteredMovies?[indexPath.row]
         performSegue(withIdentifier: "detailsMovies", sender: movie)
     }
     
@@ -198,15 +214,16 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
             
             let destination = segue.destination as! toDetailsVC
             
+            //API Variables == My Variables
+            
             destination.selectedTitleLabel = movie.title
             destination.selectedYearLabel = movie.year
             destination.selectedTypeLabel = movie.type
             destination.selectedImdbLabel = movie.imdbID
             destination.selectedImage = movie.poster
             
-            // TODO -> Action
-            destination.selectedResults = "730"
-            destination.selectedResponse = ""
+            destination.selectedResults = response?.totalResults ?? ""
+            destination.selectedResponse = response?.response ?? ""
         }
     }
     
@@ -220,76 +237,46 @@ class ViewController: UIViewController,UITableViewDelegate,UITableViewDataSource
         return cell
     }
     
-    func setLoading(){
+    //Spinner and Loading Label Settings
+    
+    func setLoadingScreen() {
+        
+        
         let width: CGFloat = 120
         let height: CGFloat = 30
         let x = (tableView.frame.width / 2) - (width / 2)
-        let y = (tableView.frame.height / 2) - (height / 2)
+        let y = (tableView.frame.height / 2) - (height / 2) - (navigationController?.navigationBar.frame.height)!
         loadingView.frame = CGRect(x: x, y: y, width: width, height: height)
         
-        loadingLabel.textColor = .white
+        
+        loadingLabel.textColor = .black
         loadingLabel.textAlignment = .center
         loadingLabel.text = "Loading..."
-        loadingLabel.frame = (CGRect(x: 0, y: 0, width: 140, height: 30))
+        loadingLabel.frame = CGRect(x: 0, y: 0, width: 140, height: 30)
         
         spinner.style = .medium
         spinner.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
         spinner.startAnimating()
-        spinner.color = .white
+        spinner.color = .black
+        
         
         loadingView.addSubview(spinner)
         loadingView.addSubview(loadingLabel)
         
         tableView.addSubview(loadingView)
+        
     }
     
-      func setLoadingScreen() {
-
-            
-            let width: CGFloat = 120
-            let height: CGFloat = 30
-            let x = (tableView.frame.width / 2) - (width / 2)
-            let y = (tableView.frame.height / 2) - (height / 2) - (navigationController?.navigationBar.frame.height)!
-            loadingView.frame = CGRect(x: x, y: y, width: width, height: height)
-
-            
-            loadingLabel.textColor = .black
-            loadingLabel.textAlignment = .center
-            loadingLabel.text = "Loading..."
-            loadingLabel.frame = CGRect(x: 0, y: 0, width: 140, height: 30)
-
-            spinner.style = .medium
-            spinner.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
-            spinner.startAnimating()
-            spinner.color = .black
-
-            loadingView.addSubview(spinner)
-            loadingView.addSubview(loadingLabel)
-
-            tableView.addSubview(loadingView)
-
-        }
-
-          func removeLoadingScreen() {
-
-            spinner.stopAnimating()
-            spinner.isHidden = true
-            loadingLabel.isHidden = true
-
-        }
+    //Removing Loading Label And Spinner From Center of TableView
     
-
+    func removeLoadingScreen() {
+        
+        spinner.stopAnimating()
+        spinner.isHidden = true
+        loadingLabel.isHidden = true
+        
     }
-
-
-/*
-extension String{
-    public func toImage() -> UIImage?{
-        if let data = Data(base64Encoded: self, options: .ignoreUnknownCharacters){
-            return UIImage(data: data)
-        }
-        return nil
-    }
- */
+    
+}
 
 
